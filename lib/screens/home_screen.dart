@@ -5,6 +5,8 @@ import '../services/parts_service.dart';
 import '../models/part.dart';
 import 'part_details_screen.dart';
 import 'search_parts_screen.dart';
+import 'work_order_tracking_screen.dart';
+import 'barcode_scanner_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,6 +24,38 @@ class _HomeScreenState extends State<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<PartsService>().fetchParts();
     });
+  }
+
+  void _onBottomNavTap(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+
+    // Navigate to different screens based on tab
+    switch (index) {
+      case 0: // Home - stay on current screen
+        break;
+      case 1: // Search
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const SearchPartsScreen()),
+        );
+        break;
+      case 2: // Reports
+      // Navigate to reports screen (to be implemented)
+        _showMessage(context, 'Reports feature coming soon');
+        break;
+      case 3: // Task/Work Orders
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const WorkOrderTrackingScreen()),
+        );
+        break;
+      case 4: // Account
+      // Navigate to account screen (to be implemented)
+        _showMessage(context, 'Account feature coming soon');
+        break;
+    }
   }
 
   @override
@@ -64,7 +98,9 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         actions: [
           IconButton(
-            onPressed: () {},
+            onPressed: () {
+              _showMessage(context, 'Profile feature coming soon');
+            },
             icon: const Icon(Icons.person_outline),
           ),
         ],
@@ -76,11 +112,7 @@ class _HomeScreenState extends State<HomeScreen> {
         selectedItemColor: const Color(0xFF2196F3),
         unselectedItemColor: Colors.grey,
         currentIndex: _selectedIndex,
-        onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
+        onTap: _onBottomNavTap,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
@@ -106,6 +138,15 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  void _showMessage(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: const Color(0xFF2C2C2C),
+      ),
+    );
+  }
 }
 
 class HomeContent extends StatelessWidget {
@@ -128,13 +169,22 @@ class HomeContent extends StatelessWidget {
           ),
           const SizedBox(height: 20),
 
+          // Quick Stats Section
+          _buildQuickStats(context),
+          const SizedBox(height: 24),
+
           // Action Cards
           _buildActionCard(
             context,
             icon: Icons.qr_code_scanner,
             title: 'Scan Barcodes',
             subtitle: 'Capture scan parts from work orders or for storage',
-            onTap: () => _scanBarcode(context),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const BarcodeScannerScreen()),
+              );
+            },
           ),
           const SizedBox(height: 16),
 
@@ -144,7 +194,10 @@ class HomeContent extends StatelessWidget {
             title: 'Work Order Tracking',
             subtitle: 'View work orders that are attached',
             onTap: () {
-              // Navigate to work order tracking
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const WorkOrderTrackingScreen()),
+              );
             },
           ),
           const SizedBox(height: 16),
@@ -163,8 +216,119 @@ class HomeContent extends StatelessWidget {
               );
             },
           ),
+          const SizedBox(height: 16),
+
+          _buildActionCard(
+            context,
+            icon: Icons.inventory_2,
+            title: 'Inventory Management',
+            subtitle: 'Manage stock levels and part locations',
+            onTap: () {
+              _showMessage(context, 'Inventory Management feature coming soon');
+            },
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildQuickStats(BuildContext context) {
+    return Consumer<PartsService>(
+      builder: (context, partsService, child) {
+        final totalParts = partsService.parts.length;
+        final lowStockParts = partsService.parts.where((part) => part.quantity < 5).length;
+        final availableParts = partsService.parts.where((part) => part.quantity > 0).length;
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF2C2C2C),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: const Color(0xFF2196F3).withOpacity(0.3),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.analytics_outlined,
+                    color: Color(0xFF2196F3),
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Quick Overview',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatItem(
+                      'Total Parts',
+                      totalParts.toString(),
+                      Icons.inventory,
+                      Colors.blue,
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildStatItem(
+                      'Available',
+                      availableParts.toString(),
+                      Icons.check_circle,
+                      Colors.green,
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildStatItem(
+                      'Low Stock',
+                      lowStockParts.toString(),
+                      Icons.warning,
+                      Colors.orange,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStatItem(String label, String value, IconData icon, Color color) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 24),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: TextStyle(
+            color: color,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.grey,
+            fontSize: 12,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 
@@ -226,37 +390,6 @@ class HomeContent extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Future<void> _scanBarcode(BuildContext context) async {
-    try {
-      String barcodeScanRes = await FlutterBarcodeScanner.scanBarcode(
-        '#ff6666',
-        'Cancel',
-        true,
-        ScanMode.BARCODE,
-      );
-
-      if (barcodeScanRes != '-1' && context.mounted) {
-        // Search for part by barcode/part number
-        final partsService = context.read<PartsService>();
-        final parts = await partsService.searchParts(barcodeScanRes);
-
-        if (parts.isNotEmpty) {
-          // Navigate to part details
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => PartDetailsScreen(part: parts.first),
-            ),
-          );
-        } else {
-          _showMessage(context, 'No part found with barcode: $barcodeScanRes');
-        }
-      }
-    } catch (e) {
-      _showMessage(context, 'Error scanning barcode: $e');
-    }
   }
 
   void _showMessage(BuildContext context, String message) {
